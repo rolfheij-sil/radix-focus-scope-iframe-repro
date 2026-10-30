@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Radix FocusScope iframe repro</title>
+    <style>
+      /* Presence keeps the closed popover mounted until this animation ends, as in the real app. */
+      .pop[data-state='closed'] { animation: pop-out 150ms; }
+      @keyframes pop-out { to { opacity: 0.5; } }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
