@@ -1,9 +1,16 @@
 # Radix FocusScope re-focuses its container while the document has no focus
 
 Reproduction for [radix-ui/primitives#4261](https://github.com/radix-ui/primitives/issues/4261).
-Run it (`npm install && npm run dev`), wait for pane A's popover to show, then click pane B's input.
-In `@radix-ui/react-focus-scope` 1.3.1, pane A takes focus back from pane B. Open in StackBlitz:
-https://stackblitz.com/github/rolfheij-sil/radix-focus-scope-iframe-repro
+How to use it:
+
+1. Open https://stackblitz.com/github/rolfheij-sil/radix-focus-scope-iframe-repro
+2. Wait until the verdict says "Waiting" and pane A shows its popover input.
+3. Click pane B's input.
+4. Read the verdict. In `@radix-ui/react-focus-scope` 1.3.1 (as shipped) it turns to `BUG: pane A took
+   focus back from pane B`. Click "Run patched" and repeat to see `OK: pane B kept focus`. "Reset"
+   reloads the page so the popover reopens.
+
+(Locally: `npm install && npm run dev`.)
 
 Details below.
 

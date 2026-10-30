@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as Popover from '@radix-ui/react-popover';
 
 declare const __FOCUS_SCOPE_VERSION__: string;
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const name = (el: Element | null) =>
   `${el?.tagName.toLowerCase()}${el?.getAttribute('role') ? `[role=${el.getAttribute('role')}]` : ''}`;
@@ -72,25 +72,49 @@ export function PaneB() {
 
 export function Host() {
   const [log, setLog] = useState<string[]>([]);
-  const patched = new URLSearchParams(location.search).get('patched') === '1' ? '&patched=1' : '';
+  const [verdict, setVerdict] = useState<{ text: string; color: string }>({
+    text: "Waiting: click pane B's input",
+    color: '#b36b00',
+  });
+  const preRef = useRef<HTMLPreElement>(null);
+  // State derived from the panes' postMessage reports.
+  const st = useRef({ clickedAt: 0, bug: false, has: { A: false, B: false } as Record<string, boolean> });
+  const isPatched = new URLSearchParams(location.search).get('patched') === '1';
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
-      if (e.data?.pane) setLog((l) => [...l.slice(-60), `${e.data.t} ${e.data.pane}: ${e.data.msg}`]);
+      const { pane, t, msg } = e.data ?? {};
+      if (!pane) return;
+      setLog((l) => [...l.slice(-199), `${t} ${pane}: ${msg}`]);
+      const s = st.current;
+      s.has[pane] = msg.includes('hasFocus=true');
+      if (pane === 'B' && msg.startsWith('window focus') && !s.clickedAt) s.clickedAt = Date.now();
+      if (!s.clickedAt) return;
+      if (pane === 'A' && s.has.A && !s.has.B) s.bug = true; // A has focus while B does not
+      if (s.bug) setVerdict({ text: 'BUG: pane A took focus back from pane B', color: '#c00' });
+      else if (s.has.B && Date.now() - s.clickedAt >= 1500)
+        setVerdict({ text: 'OK: pane B kept focus', color: '#080' });
+      else setVerdict({ text: 'Checking: watching panes A and B...', color: '#b36b00' });
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, []);
+  useEffect(() => {
+    if (preRef.current) preRef.current.scrollTop = preRef.current.scrollHeight;
+  }, [log]);
   return (
     <div>
       <p>
-        @radix-ui/react-focus-scope {__FOCUS_SCOPE_VERSION__}
-        {patched && ' (patched: focus() ignored while !hasFocus)'}. Click pane B&apos;s input: pane A must not take focus back.
+        @radix-ui/react-focus-scope {__FOCUS_SCOPE_VERSION__}, mode:{' '}
+        {isPatched ? 'patched (focus() on the dialog ignored while the document has no focus)' : 'as shipped'}{' '}
+        {isPatched ? <a href="/">Run as shipped</a> : <a href="/?patched=1">Run patched</a>}{' '}
+        <button onClick={() => location.reload()}>Reset</button>
       </p>
+      <div style={{ fontSize: 28, fontWeight: 700, color: verdict.color }}>{verdict.text}</div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <iframe id="a" title="A" src={`/?pane=a${patched}`} style={{ width: 320, height: 160 }} />
+        <iframe id="a" title="A" src={`/?pane=a${isPatched ? '&patched=1' : ''}`} style={{ width: 320, height: 160 }} />
         <iframe id="b" title="B" src="/?pane=b" style={{ width: 320, height: 160 }} />
       </div>
-      <pre style={{ height: 300, overflow: 'auto' }}>{log.join('\n')}</pre>
+      <pre ref={preRef} style={{ height: 300, overflow: 'auto' }}>{log.join('\n')}</pre>
     </div>
   );
 }
